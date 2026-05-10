@@ -253,7 +253,7 @@ def health():
 def chat(request: ChatRequest) -> ChatResponse:
     if _retriever is None:
         raise HTTPException(status_code=503, detail="Service initialising — retry in a few seconds.")
-    if not os.environ.get("GROQ_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
+    if not any(os.environ.get(k) for k in ("GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY")):
         raise HTTPException(status_code=500, detail="No LLM API key configured.")
     try:
         return agent.run(request.messages, _retriever)

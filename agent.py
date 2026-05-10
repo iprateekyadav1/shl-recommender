@@ -284,21 +284,49 @@ def _call_gemini(system_prompt: str, messages: List[Message]) -> str:
     return response.text
 
 
+def _call_openrouter(system_prompt: str, messages: List[Message]) -> str:
+    """OpenRouter fallback — any OpenAI-compatible model free tier."""
+    import httpx
+    api_key = os.environ["OPENROUTER_API_KEY"]
+    payload = {
+        "model": os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free"),
+        "messages": [{"role": "system", "content": system_prompt}]
+                    + [{"role": m.role, "content": m.content} for m in messages],
+        "temperature": 0.2,
+        "max_tokens": 1024,
+        "response_format": {"type": "json_object"},
+    }
+    resp = httpx.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        json=payload,
+        headers={"Authorization": f"Bearer {api_key}"},
+        timeout=28,
+    )
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"] or ""
+
+
 def _call_llm(system_prompt: str, messages: List[Message]) -> str:
     if os.environ.get("GROQ_API_KEY"):
         try:
             return _call_groq(system_prompt, messages)
         except Exception as exc:
-            logger.warning("Groq failed: %s — trying Gemini…", exc)
+            logger.warning("Groq failed: %s — trying fallback…", exc)
 
     if os.environ.get("GEMINI_API_KEY"):
         try:
             return _call_gemini(system_prompt, messages)
         except Exception as exc:
-            logger.error("Gemini also failed: %s", exc)
+            logger.warning("Gemini failed: %s — trying OpenRouter…", exc)
+
+    if os.environ.get("OPENROUTER_API_KEY"):
+        try:
+            return _call_openrouter(system_prompt, messages)
+        except Exception as exc:
+            logger.error("OpenRouter also failed: %s", exc)
             raise
 
-    raise RuntimeError("No LLM API key configured. Set GROQ_API_KEY or GEMINI_API_KEY.")
+    raise RuntimeError("No LLM API key configured. Set GROQ_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY.")
 
 
 # ── Flagship item injection ───────────────────────────────────────────────────
