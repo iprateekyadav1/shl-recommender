@@ -106,7 +106,7 @@ var TT_LABELS = {
   A:"Ability & Aptitude", B:"Behavioural / SJT", C:"Competency",
   E:"Exercise", K:"Knowledge & Skills", P:"Personality", S:"Simulation"
 };
-var history = [];
+var msgHistory = [];
 var chat = document.getElementById('chat');
 var inp  = document.getElementById('inp');
 var send = document.getElementById('send');
@@ -168,13 +168,13 @@ document.getElementById('form').addEventListener('submit', function(e){
   if(!text) return;
   inp.value = ''; inp.style.height = 'auto';
   send.disabled = true;
-  history.push({role:'user', content:text});
+  msgHistory.push({role:'user', content:text});
   appendBubble('user', text, null);
   addTyping();
   fetch('/chat',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({messages: history})
+    body: JSON.stringify({messages: msgHistory})
   }).then(function(res){
     return res.json().then(function(data){ return {ok:res.ok, data:data}; });
   }).then(function(r){
@@ -182,7 +182,7 @@ document.getElementById('form').addEventListener('submit', function(e){
     if(!r.ok){
       appendBubble('assistant', 'Error: ' + (r.data.detail || 'Unknown error'), null);
     } else {
-      history.push({role:'assistant', content:r.data.reply});
+      msgHistory.push({role:'assistant', content:r.data.reply});
       appendBubble('assistant', r.data.reply, r.data.recommendations);
       if(r.data.end_of_conversation){
         var m = mkEl('div','sysmsg');
@@ -200,7 +200,10 @@ document.getElementById('form').addEventListener('submit', function(e){
 });
 
 inp.addEventListener('keydown', function(e){
-  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('form').requestSubmit(); }
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    send.click();
+  }
 });
 </script>
 </body>
