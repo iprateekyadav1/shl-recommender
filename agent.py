@@ -183,7 +183,7 @@ def _call_groq(system_prompt: str, messages: List[Message]) -> str:
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     groq_messages = [{"role": m.role, "content": m.content} for m in messages]
     response = client.chat.completions.create(
-        model="llama3-70b-8192",
+        model="llama-3.3-70b-versatile",
         messages=[{"role": "system", "content": system_prompt}] + groq_messages,
         temperature=0.3,
         max_tokens=1024,
