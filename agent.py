@@ -25,12 +25,13 @@ MAX_TURNS = 8
 # ── Test-type labels ──────────────────────────────────────────────────────────
 TEST_TYPE_LABELS = {
     "A": "Ability & Aptitude",
-    "B": "Behavioural / Situational Judgement",
-    "C": "Competencies / Interview",
-    "E": "Assessment Exercise",
+    "B": "Biodata & Situational Judgment",
+    "C": "Competencies",
+    "D": "Development & 360",
+    "E": "Assessment Exercises",
     "K": "Knowledge & Skills",
-    "P": "Personality & Behaviour",
-    "S": "Simulation",
+    "P": "Personality & Behavior",
+    "S": "Simulations",
 }
 
 # ── System prompt ─────────────────────────────────────────────────────────────
@@ -42,8 +43,34 @@ managers find the right SHL Individual Test Solutions for their open roles.
 {catalog_context}
 
 ## Test-type key
-A = Ability/Aptitude  |  B = Behavioural/SJT  |  C = Competency/Interview
-E = Exercise  |  K = Knowledge & Skills  |  P = Personality  |  S = Simulation
+A = Ability/Aptitude  |  B = Biodata & Situational Judgment  |  C = Competencies
+D = Development & 360  |  E = Assessment Exercises  |  K = Knowledge & Skills
+P = Personality & Behavior  |  S = Simulations
+Some products cover multiple types — use comma-separated codes, e.g. "K,S" or "A,S".
+
+## Key SHL instruments (mandatory consideration)
+- **Occupational Personality Questionnaire OPQ32r** (Type P, URL: \
+https://www.shl.com/products/product-catalog/view/occupational-personality-questionnaire-opq32r/): \
+SHL's flagship personality instrument. Always recommend it FIRST whenever personality \
+or behavioural assessment is relevant. When you recommend any OPQ-branded report (OPQ Leadership \
+Report, OPQ UCF Report, OPQ MQ Sales Report, HiPo, Enterprise Leadership, etc.), you MUST also \
+include OPQ32r — candidates sit OPQ32r once and the reports are generated from it.
+- **SHL Verify Interactive G+** (Type A, URL: \
+https://www.shl.com/products/product-catalog/view/shl-verify-interactive-g/): \
+SHL's flagship cognitive ability test. Include it for professional, managerial, graduate, and \
+technical/senior IC roles.
+- **Dependability and Safety Instrument (DSI)** (Type P): Include for any safety-critical, \
+industrial, healthcare, or high-integrity role where dependability and compliance matter.
+
+## Test selection rules
+- For cognitive tests: PREFER "SHL Verify Interactive" versions (newer, adaptive, type A or A,S) \
+over older "Verify - " versions (type A only). E.g., prefer "SHL Verify Interactive – Numerical \
+Reasoning" over "Verify - Numerical Ability".
+- For technical roles (developer, engineer): provide a FULL battery — include ALL relevant \
+language/technology tests from the catalog plus cognitive (Verify G+) and personality (OPQ32r). \
+Do NOT limit to 3 items — aim for 5–8 items to cover the full tech stack.
+- For knowledge test topics explicitly mentioned in the query (Java, SQL, Spring, Python, etc.), \
+include each one individually if it appears in the catalog context above.
 
 ## Strict rules
 1. SCOPE: Only discuss SHL assessments. Politely refuse general hiring advice, \
@@ -71,7 +98,7 @@ the user signals they are done (e.g. "thanks", "that's all", "looks good").
     {{
       "name": "<exact name from catalog above>",
       "url": "<exact URL from catalog above>",
-      "test_type": "<single letter code: A/B/C/E/K/P/S>"
+      "test_type": "<code from catalog, e.g. K or K,S or A,S or P,C>"
     }}
   ],
   "end_of_conversation": false
@@ -86,13 +113,26 @@ def _build_catalog_context(items: List[dict]) -> str:
     lines = []
     for i, item in enumerate(items, 1):
         tt = item.get("test_type", "?")
-        label = TEST_TYPE_LABELS.get(tt, tt)
-        tags = ", ".join(item.get("tags", []))
+        # Build human-readable label for multi-code types like "K,S"
+        label_parts = [TEST_TYPE_LABELS.get(c.strip(), c.strip()) for c in tt.split(",")]
+        label = " + ".join(label_parts)
+        tags = ", ".join(item.get("tags", [])[:10])
+        dur = item.get("duration") or ""
+        langs = item.get("languages") or []
+        lang_str = ""
+        if langs:
+            shown = langs[:4]
+            extra = len(langs) - len(shown)
+            lang_str = ", ".join(shown) + (f" (+{extra} more)" if extra else "")
+        levels = ", ".join(item.get("job_levels", [])[:4])
         lines.append(
-            f"{i}. {item['name']} [{tt} — {label}]\n"
+            f"{i}. {item['name']} [Type: {tt} — {label}]\n"
             f"   URL: {item['url']}\n"
-            f"   Tags: {tags}\n"
-            f"   About: {item['description']}\n"
+            + (f"   Duration: {dur}\n" if dur else "")
+            + (f"   Languages: {lang_str}\n" if lang_str else "")
+            + (f"   Job Levels: {levels}\n" if levels else "")
+            + f"   Tags: {tags}\n"
+            f"   About: {item.get('description', '')[:200]}\n"
         )
     return "\n".join(lines)
 
@@ -167,10 +207,49 @@ def _parse_response(raw: str, catalog_items: List[dict]) -> ChatResponse:
         if not test_type and url in url_to_item:
             test_type = url_to_item[url].get("test_type", "")
 
-        if name and url and test_type:
-            recommendations.append(Recommendation(name=name, url=url, test_type=test_type))
+        if name and url:
+            if not test_type and url in url_to_item:
+                test_type = url_to_item[url].get("test_type", "K")
+            recommendations.append(Recommendation(name=name, url=url, test_type=test_type or "K"))
+
+    # Post-processing: ensure OPQ32r is present when personality reports are recommended
+    recommendations = _ensure_opq32r(recommendations, catalog_items)
 
     return ChatResponse(reply=reply, recommendations=recommendations, end_of_conversation=end_flag)
+
+
+# ── OPQ32r post-processing ────────────────────────────────────────────────────
+
+_OPQ32R_URL = "https://www.shl.com/products/product-catalog/view/occupational-personality-questionnaire-opq32r/"
+_OPQ_REPORT_KEYWORDS = ("opq leadership", "opq universal", "opq mq", "opq team", "opq profile",
+                         "enterprise leadership", "hipo assessment", "sales transformation",
+                         "ucf report", "leadership report")
+
+
+def _ensure_opq32r(recs: List[Recommendation], catalog_items: List[dict]) -> List[Recommendation]:
+    """If any OPQ report is recommended but OPQ32r isn't, prepend OPQ32r."""
+    if not recs:
+        return recs
+    urls = {r.url for r in recs}
+    if _OPQ32R_URL in urls:
+        return recs
+    needs_opq = any(
+        any(kw in r.name.lower() for kw in _OPQ_REPORT_KEYWORDS)
+        for r in recs
+    )
+    if not needs_opq:
+        return recs
+    opq32r = next(
+        (item for item in catalog_items if item["url"] == _OPQ32R_URL), None
+    )
+    if opq32r:
+        injected = Recommendation(
+            name=opq32r["name"],
+            url=opq32r["url"],
+            test_type=opq32r.get("test_type", "P"),
+        )
+        return [injected] + list(recs)
+    return recs
 
 
 # ── LLM callers ──────────────────────────────────────────────────────────────
@@ -222,6 +301,26 @@ def _call_llm(system_prompt: str, messages: List[Message]) -> str:
     raise RuntimeError("No LLM API key configured. Set GROQ_API_KEY or GEMINI_API_KEY.")
 
 
+# ── Flagship item injection ───────────────────────────────────────────────────
+
+_FLAGSHIP_NAMES = [
+    "Occupational Personality Questionnaire OPQ32r",
+    "SHL Verify Interactive G+",
+]
+
+
+def _inject_flagship_items(
+    catalog_items: List[dict], retriever: CatalogRetriever
+) -> List[dict]:
+    """Ensure the two flagship instruments are always present in retrieved context."""
+    present = {item["name"] for item in catalog_items}
+    name_map = {item["name"]: item for item in retriever._catalog}
+    for name in _FLAGSHIP_NAMES:
+        if name not in present and name in name_map:
+            catalog_items = catalog_items + [name_map[name]]
+    return catalog_items
+
+
 # ── Public interface ──────────────────────────────────────────────────────────
 
 def run(messages: List[Message], retriever: CatalogRetriever) -> ChatResponse:
@@ -243,7 +342,7 @@ def run(messages: List[Message], retriever: CatalogRetriever) -> ChatResponse:
         )
 
     query = _last_user_message(messages)
-    catalog_items = retriever.search(query, top_k=10)
+    catalog_items = retriever.search(query, top_k=15)
 
     if not catalog_items:
         return ChatResponse(
@@ -252,6 +351,10 @@ def run(messages: List[Message], retriever: CatalogRetriever) -> ChatResponse:
             recommendations=[],
             end_of_conversation=False,
         )
+
+    # Always inject the two flagship instruments so the LLM can reference them
+    # even when they don't rank high for domain-specific queries.
+    catalog_items = _inject_flagship_items(catalog_items, retriever)
 
     system_prompt = _SYSTEM_TEMPLATE.format(
         catalog_context=_build_catalog_context(catalog_items),

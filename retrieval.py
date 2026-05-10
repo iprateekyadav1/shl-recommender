@@ -25,11 +25,14 @@ class CatalogRetriever:
         """Embed all catalog descriptions and build a FAISS inner-product index."""
         logger.info("Building FAISS index for %d catalog items…", len(self._catalog))
 
-        # Combine name + tags + description for richer embeddings
+        # Combine name + tags + description + job_levels for richer embeddings
         texts = []
         for item in self._catalog:
             tags_str = " ".join(item.get("tags", []))
-            composite = f"{item['name']}. {tags_str}. {item['description']}"
+            levels_str = " ".join(item.get("job_levels", []))
+            composite = (
+                f"{item['name']}. {tags_str}. {levels_str}. {item.get('description', '')}"
+            )
             texts.append(composite)
 
         embeddings = self._model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
