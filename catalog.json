@@ -1,194 +1,226 @@
 [
   {
-    "name": "OPQ32 (Occupational Personality Questionnaire)",
+    "name": "OPQ32r",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/opq32r/",
-    "description": "Measures 32 personality characteristics across three domains: relationships with people, thinking styles, and feelings and emotions. Used for managerial, professional, and graduate-level roles to predict leadership potential, team fit, and cultural alignment.",
+    "description": "Measures 32 personality characteristics across three domains: relationships with people, thinking styles, and feelings and emotions. Predicts leadership potential, team fit, and cultural alignment.",
+    "test_type": "P",
     "tags": ["personality", "leadership", "managerial", "professional", "behavioural"]
   },
   {
     "name": "Motivation Questionnaire (MQ)",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/motivation-questionnaire-mq/",
-    "description": "Assesses 18 dimensions of workplace motivation including energy and dynamism, commercial focus, and personal growth. Helps predict engagement, retention risk, and job satisfaction for any level or function.",
-    "tags": ["motivation", "engagement", "behavioural", "retention"]
+    "description": "Assesses 18 dimensions of workplace motivation including energy and dynamism, commercial focus, and personal growth. Predicts engagement, retention risk, and job satisfaction.",
+    "test_type": "P",
+    "tags": ["motivation", "engagement", "behavioural", "retention", "personality"]
   },
   {
-    "name": "Verify G+ (General Ability)",
+    "name": "Verify G+ General Ability",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/general-ability/",
-    "description": "Adaptive test measuring overall cognitive ability (g-factor) by combining numerical, verbal, and inductive reasoning. Strong predictor of learning potential and performance across a wide range of roles.",
-    "tags": ["cognitive", "general ability", "adaptive", "numerical", "verbal", "inductive"]
+    "description": "Adaptive test measuring overall cognitive ability (g-factor) combining numerical, verbal, and inductive reasoning. Strong predictor of learning potential and job performance across roles.",
+    "test_type": "A",
+    "tags": ["cognitive", "general ability", "adaptive", "numerical", "verbal", "inductive", "aptitude"]
   },
   {
     "name": "Verify Numerical Reasoning",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/numerical-reasoning-1/",
-    "description": "Measures ability to analyse and interpret numerical data presented as tables, graphs, and charts. Suitable for roles requiring data analysis, finance, engineering, or any job where numerical judgement is critical.",
-    "tags": ["cognitive", "numerical", "data analysis", "finance", "analytical"]
+    "description": "Measures ability to analyse and interpret numerical data from tables, graphs, and charts. Critical for roles requiring data analysis, finance, engineering, or numerical judgement.",
+    "test_type": "A",
+    "tags": ["cognitive", "numerical", "data analysis", "finance", "analytical", "aptitude"]
   },
   {
     "name": "Verify Verbal Reasoning",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/verbal-reasoning-1/",
-    "description": "Assesses ability to understand, evaluate, and draw conclusions from written information. Essential for roles requiring strong communication, policy analysis, consulting, legal, or HR work.",
-    "tags": ["cognitive", "verbal", "communication", "analytical", "reading"]
+    "description": "Assesses ability to understand, evaluate, and draw conclusions from written information. Essential for roles requiring communication, policy analysis, consulting, legal, or HR work.",
+    "test_type": "A",
+    "tags": ["cognitive", "verbal", "communication", "analytical", "reading", "aptitude"]
   },
   {
     "name": "Verify Inductive Reasoning",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/inductive-reasoning-1/",
-    "description": "Tests abstract reasoning by asking candidates to identify rules and patterns in sequences of shapes. Predicts problem-solving ability and adaptability to new situations, especially for technical and IT roles.",
-    "tags": ["cognitive", "inductive", "abstract", "problem-solving", "technical", "IT"]
+    "description": "Tests abstract reasoning by identifying rules and patterns in shape sequences. Predicts problem-solving ability and adaptability; especially relevant for technical, IT, and engineering roles.",
+    "test_type": "A",
+    "tags": ["cognitive", "inductive", "abstract", "problem-solving", "technical", "IT", "engineering", "aptitude"]
   },
   {
     "name": "Verify Deductive Reasoning",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/deductive-reasoning-1/",
-    "description": "Measures ability to draw logical conclusions from provided premises and rules. Suited for roles requiring structured analysis, compliance, legal, or operations where rule-based thinking is important.",
-    "tags": ["cognitive", "deductive", "logical", "analytical", "compliance"]
+    "description": "Measures ability to draw logical conclusions from premises and rules. Suited for compliance, legal, operations, and roles where rule-based structured analysis is critical.",
+    "test_type": "A",
+    "tags": ["cognitive", "deductive", "logical", "analytical", "compliance", "aptitude"]
   },
   {
     "name": "Verify Mechanical Comprehension",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/mechanical-comprehension-1/",
     "description": "Evaluates understanding of mechanical principles such as levers, pulleys, gears, and fluid dynamics. Used for engineering, trades, manufacturing, and technical maintenance positions.",
-    "tags": ["cognitive", "mechanical", "engineering", "technical", "trades", "manufacturing"]
+    "test_type": "A",
+    "tags": ["cognitive", "mechanical", "engineering", "technical", "trades", "manufacturing", "aptitude"]
   },
   {
     "name": "Verify Calculation",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/calculation/",
-    "description": "Measures speed and accuracy in basic arithmetic calculations including addition, subtraction, multiplication, and division. Relevant for clerical, financial, and operational roles requiring numerical accuracy.",
-    "tags": ["cognitive", "numerical", "calculation", "clerical", "accuracy", "speed"]
+    "description": "Measures speed and accuracy in basic arithmetic. Relevant for clerical, financial, and operational roles requiring numerical accuracy under time pressure.",
+    "test_type": "A",
+    "tags": ["cognitive", "numerical", "calculation", "clerical", "accuracy", "speed", "aptitude"]
   },
   {
     "name": "Verify Checking",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/checking/",
-    "description": "Assesses attention to detail by asking candidates to spot errors or mismatches in data sets. Critical for data-entry, administrative, quality control, and financial accuracy roles.",
-    "tags": ["cognitive", "attention to detail", "clerical", "accuracy", "data entry"]
+    "description": "Assesses attention to detail by spotting errors or mismatches in data sets. Critical for data-entry, administrative, quality control, and financial accuracy roles.",
+    "test_type": "A",
+    "tags": ["cognitive", "attention to detail", "clerical", "accuracy", "data entry", "aptitude"]
   },
   {
-    "name": "Automata Fix (Coding Bug-Fix Assessment)",
+    "name": "Automata Fix",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/automata-fix/",
-    "description": "Presents candidates with broken code and asks them to identify and fix bugs. Tests practical debugging skills in multiple languages (Java, Python, JavaScript, C++, SQL). Ideal for developers at all levels.",
-    "tags": ["coding", "debugging", "software", "technical", "Java", "Python", "JavaScript", "C++", "SQL"]
+    "description": "Presents broken code for candidates to debug and fix across multiple languages including Java, Python, JavaScript, C++, and SQL. Tests practical debugging skills for developers at all levels.",
+    "test_type": "K",
+    "tags": ["coding", "debugging", "software", "technical", "Java", "Python", "JavaScript", "C++", "SQL", "developer"]
   },
   {
-    "name": "Automata Pro (Full Coding Simulation)",
+    "name": "Automata Pro",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/automata-pro/",
-    "description": "Full-stack coding simulation requiring candidates to build or extend a real feature in a realistic IDE environment. Measures end-to-end software engineering skill including design, coding, and testing.",
-    "tags": ["coding", "software engineering", "full-stack", "senior", "technical"]
+    "description": "Full coding simulation requiring candidates to build or extend real features in a realistic IDE. Measures end-to-end software engineering including design, implementation, and testing.",
+    "test_type": "S",
+    "tags": ["coding", "software engineering", "full-stack", "senior", "technical", "simulation", "developer"]
   },
   {
-    "name": "Verify Interactive Java",
-    "url": "https://www.shl.com/solutions/products/product-catalog/view/verify-interactive-java/",
-    "description": "Adaptive coding assessment specifically for Java developers. Covers object-oriented design, collections, concurrency, exception handling, and Java-specific APIs. Suitable for junior to senior Java roles.",
-    "tags": ["coding", "Java", "software", "technical", "OOP", "backend"]
+    "name": "Java (New)",
+    "url": "https://www.shl.com/solutions/products/product-catalog/view/java-new/",
+    "description": "Adaptive coding assessment for Java developers covering object-oriented design, collections, concurrency, exception handling, and Java APIs. Suitable for junior to senior Java roles.",
+    "test_type": "K",
+    "tags": ["coding", "Java", "software", "technical", "OOP", "backend", "developer"]
   },
   {
-    "name": "Verify Interactive Python",
-    "url": "https://www.shl.com/solutions/products/product-catalog/view/verify-interactive-python/",
-    "description": "Adaptive coding assessment for Python developers. Covers data structures, algorithms, OOP, file handling, and Python standard library usage. Relevant for data engineers, ML engineers, and backend developers.",
-    "tags": ["coding", "Python", "software", "technical", "backend", "data engineering", "ML"]
+    "name": "Python (New)",
+    "url": "https://www.shl.com/solutions/products/product-catalog/view/python-new/",
+    "description": "Adaptive coding assessment for Python developers covering data structures, algorithms, OOP, file handling, and the Python standard library. Relevant for backend, data engineering, and ML engineers.",
+    "test_type": "K",
+    "tags": ["coding", "Python", "software", "technical", "backend", "data engineering", "ML", "developer"]
   },
   {
-    "name": "Verify Interactive SQL",
-    "url": "https://www.shl.com/solutions/products/product-catalog/view/verify-interactive-sql/",
+    "name": "SQL (New)",
+    "url": "https://www.shl.com/solutions/products/product-catalog/view/sql-new/",
     "description": "Assesses SQL proficiency including joins, subqueries, aggregations, window functions, and query optimisation. Used for data analysts, database administrators, and backend developers.",
-    "tags": ["coding", "SQL", "database", "data analysis", "technical", "DBA"]
+    "test_type": "K",
+    "tags": ["coding", "SQL", "database", "data analysis", "technical", "DBA", "developer"]
   },
   {
-    "name": "Verify Interactive JavaScript",
-    "url": "https://www.shl.com/solutions/products/product-catalog/view/verify-interactive-javascript/",
-    "description": "Adaptive coding test for JavaScript developers covering DOM manipulation, async programming, closures, prototypal inheritance, and modern ES6+ features. Suitable for frontend and Node.js roles.",
-    "tags": ["coding", "JavaScript", "frontend", "Node.js", "web development", "technical"]
+    "name": "JavaScript (New)",
+    "url": "https://www.shl.com/solutions/products/product-catalog/view/javascript-new/",
+    "description": "Adaptive coding test for JavaScript developers covering DOM, async programming, closures, prototypal inheritance, and ES6+ features. Suitable for frontend and Node.js roles.",
+    "test_type": "K",
+    "tags": ["coding", "JavaScript", "frontend", "Node.js", "web development", "technical", "developer"]
   },
   {
-    "name": "Verify Interactive C++",
-    "url": "https://www.shl.com/solutions/products/product-catalog/view/verify-interactive-cpp/",
-    "description": "Evaluates C++ programming skills including memory management, pointers, templates, STL, and performance optimisation. Used for systems programming, embedded, and game development roles.",
-    "tags": ["coding", "C++", "systems", "embedded", "technical", "performance"]
+    "name": "C++ (New)",
+    "url": "https://www.shl.com/solutions/products/product-catalog/view/c-plus-plus-new/",
+    "description": "Evaluates C++ skills including memory management, pointers, templates, STL, and performance optimisation. Used for systems programming, embedded, and high-performance computing roles.",
+    "test_type": "K",
+    "tags": ["coding", "C++", "systems", "embedded", "technical", "performance", "developer"]
   },
   {
-    "name": "Verify Interactive .NET/C#",
-    "url": "https://www.shl.com/solutions/products/product-catalog/view/verify-interactive-dot-net/",
-    "description": "Coding assessment for C# and .NET developers. Covers LINQ, async/await, dependency injection, ASP.NET, and .NET runtime concepts. Relevant for enterprise backend and cloud-native .NET roles.",
-    "tags": ["coding", "C#", ".NET", "backend", "enterprise", "technical"]
+    "name": ".NET (New)",
+    "url": "https://www.shl.com/solutions/products/product-catalog/view/dot-net-new/",
+    "description": "Coding assessment for C# and .NET developers covering LINQ, async/await, dependency injection, ASP.NET, and .NET runtime concepts. Relevant for enterprise backend roles.",
+    "test_type": "K",
+    "tags": ["coding", "C#", ".NET", "backend", "enterprise", "technical", "developer"]
   },
   {
     "name": "Contact Center Simulation",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/contact-center-simulation/",
-    "description": "Realistic simulation of customer service and contact centre scenarios including live-chat, email, and call-handling tasks. Measures empathy, multitasking, accuracy, and customer-first communication.",
+    "description": "Realistic simulation of customer service and contact centre scenarios including live-chat, email, and call handling. Measures empathy, multitasking, accuracy, and customer-first communication.",
+    "test_type": "S",
     "tags": ["simulation", "customer service", "contact centre", "communication", "operational"]
   },
   {
     "name": "Customer Service Assessment",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/customer-service/",
-    "description": "Measures customer-facing competencies such as empathy, communication clarity, problem resolution, and patience. Suitable for retail, hospitality, support, and service desk positions.",
+    "description": "Measures customer-facing competencies: empathy, communication clarity, problem resolution, and patience. Suitable for retail, hospitality, support, and service desk positions.",
+    "test_type": "B",
     "tags": ["customer service", "behavioural", "communication", "retail", "hospitality"]
   },
   {
     "name": "Sales Achievement Predictor",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/sales-achievement-predictor/",
-    "description": "Combines personality and motivational data to predict sales performance. Covers competitiveness, persuasion, resilience, and drive. Validated for field sales, inside sales, and account management roles.",
+    "description": "Combines personality and motivation data to predict sales performance. Covers competitiveness, persuasion, resilience, and drive. Validated for field sales, inside sales, and account management.",
+    "test_type": "P",
     "tags": ["sales", "personality", "motivation", "behavioural", "commercial"]
   },
   {
-    "name": "Situational Judgement Test (SJT)",
+    "name": "Situational Judgement",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/situational-judgement/",
-    "description": "Presents realistic workplace scenarios and asks candidates to choose the most and least effective responses. Assesses practical judgement, values alignment, and decision-making at all career levels.",
+    "description": "Presents realistic workplace scenarios for candidates to select the most and least effective responses. Assesses practical judgement, values alignment, and decision-making across career levels.",
+    "test_type": "B",
     "tags": ["situational judgement", "behavioural", "decision-making", "judgement", "values"]
   },
   {
-    "name": "Graduate Item Bank (GIB)",
+    "name": "Graduate Item Bank",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/graduate-item-bank/",
-    "description": "High-difficulty cognitive battery (numerical, verbal, inductive) calibrated for graduate and early-career professional recruitment. Differentiates high-potential graduates from large applicant pools.",
-    "tags": ["cognitive", "graduate", "early career", "numerical", "verbal", "inductive"]
+    "description": "High-difficulty cognitive battery (numerical, verbal, inductive) calibrated for graduate and early-career recruitment. Differentiates high-potential graduates from large applicant pools.",
+    "test_type": "A",
+    "tags": ["cognitive", "graduate", "early career", "numerical", "verbal", "inductive", "aptitude"]
   },
   {
-    "name": "Managerial/Professional Item Bank (MIB/PIB)",
+    "name": "Managerial/Professional Item Bank",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/managerial-professional-item-bank/",
-    "description": "Cognitive battery at managerial-level difficulty: numerical, verbal, and inductive reasoning. Benchmarked against senior professional and management populations worldwide.",
-    "tags": ["cognitive", "managerial", "professional", "senior", "numerical", "verbal"]
+    "description": "Cognitive battery at managerial-level difficulty: numerical, verbal, and inductive reasoning benchmarked against senior professional and management populations worldwide.",
+    "test_type": "A",
+    "tags": ["cognitive", "managerial", "professional", "senior", "numerical", "verbal", "aptitude"]
   },
   {
-    "name": "Dependability and Safety Instrument (DSI)",
+    "name": "Dependability and Safety Instrument",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/dependability-and-safety-instrument/",
-    "description": "Assesses counterproductive work behaviours, safety compliance attitudes, and reliability. Used for safety-critical, blue-collar, and operational roles where risk and dependability matter most.",
+    "description": "Assesses counterproductive work behaviours, safety compliance attitudes, and reliability. Used for safety-critical, blue-collar, and operational roles where dependability is paramount.",
+    "test_type": "P",
     "tags": ["safety", "dependability", "behavioural", "operational", "blue collar", "risk"]
   },
   {
-    "name": "Work Strengths Assessment",
+    "name": "Work Strengths",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/work-strengths/",
-    "description": "Measures practical work readiness competencies for entry-level positions: reliability, flexibility, teamwork, and customer focus. Designed for high-volume frontline and hourly worker hiring.",
+    "description": "Measures practical work readiness for entry-level positions: reliability, flexibility, teamwork, and customer focus. Designed for high-volume frontline and hourly worker hiring.",
+    "test_type": "B",
     "tags": ["entry level", "frontline", "behavioural", "competency", "high volume", "hourly"]
   },
   {
-    "name": "Technology Professional Assessments",
+    "name": "Technology Professional",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/technology-professional/",
-    "description": "Broad battery for IT professionals covering logical reasoning, technology concepts, and role-specific knowledge modules. Applicable to IT support, systems administration, and tech consulting.",
+    "description": "Broad battery for IT professionals covering logical reasoning, technology concepts, and role-specific knowledge modules. For IT support, systems administration, and tech consulting.",
+    "test_type": "K",
     "tags": ["IT", "technology", "cognitive", "technical", "systems", "consulting"]
   },
   {
-    "name": "Administrative Professional Assessments",
+    "name": "Administrative Professional",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/administrative-professional/",
-    "description": "Measures clerical speed, accuracy, and administrative competencies including data entry, document checking, and business writing. Suited for PA, executive assistant, and office administration roles.",
+    "description": "Measures clerical speed, accuracy, and administrative competencies including data entry, document checking, and business writing. For PA, executive assistant, and office administration roles.",
+    "test_type": "K",
     "tags": ["administrative", "clerical", "accuracy", "data entry", "office", "PA"]
   },
   {
-    "name": "Universal Competency Framework (UCF) 360",
-    "url": "https://www.shl.com/solutions/products/product-catalog/view/ucf-360/",
-    "description": "360-degree multi-rater assessment based on SHL's Universal Competency Framework covering 20 competency clusters. Used for leadership development, succession planning, and performance management.",
-    "tags": ["360", "leadership", "development", "competency", "managerial", "succession"]
-  },
-  {
-    "name": "Scenarios (Personality-based Situational Assessment)",
+    "name": "Scenarios",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/scenarios/",
-    "description": "Immersive scenario-based assessment combining personality measurement with situational judgement. Candidates make decisions in branching scenarios; scores map to OPQ personality scales for deeper insight.",
+    "description": "Immersive scenario-based assessment combining personality measurement with situational judgement. Branching decisions map to OPQ personality scales for deeper behavioural insight.",
+    "test_type": "P",
     "tags": ["personality", "situational judgement", "behavioural", "immersive", "senior"]
   },
   {
     "name": "Smart Interview Live",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/smart-interview-live/",
-    "description": "AI-scored live structured interview solution. Provides behavioural interview questions aligned to competencies, real-time scoring guidance, and post-interview analytics for hiring managers.",
-    "tags": ["interview", "structured interview", "behavioural", "AI scoring", "managerial"]
+    "description": "AI-scored structured interview platform providing competency-aligned questions, real-time scoring guidance, and post-interview analytics for hiring managers.",
+    "test_type": "C",
+    "tags": ["interview", "structured interview", "behavioural", "AI scoring", "managerial", "competency"]
   },
   {
     "name": "Smart Interview On Demand",
     "url": "https://www.shl.com/solutions/products/product-catalog/view/smart-interview-on-demand/",
-    "description": "Video interview platform where candidates record responses to structured questions asynchronously. AI analyses verbal content, communication clarity, and response structure to rank candidates at scale.",
-    "tags": ["interview", "video interview", "asynchronous", "AI scoring", "high volume"]
+    "description": "Asynchronous video interview platform where candidates record responses to structured questions. AI analyses verbal content and communication clarity to rank candidates at scale.",
+    "test_type": "C",
+    "tags": ["interview", "video interview", "asynchronous", "AI scoring", "high volume", "competency"]
+  },
+  {
+    "name": "Universal Competency Framework 360",
+    "url": "https://www.shl.com/solutions/products/product-catalog/view/ucf-360/",
+    "description": "360-degree multi-rater assessment based on SHL's Universal Competency Framework covering 20 competency clusters. For leadership development, succession planning, and performance management.",
+    "test_type": "C",
+    "tags": ["360", "leadership", "development", "competency", "managerial", "succession"]
   }
 ]

@@ -10,11 +10,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 
-# Resolve absolute path so it works regardless of uvicorn's CWD
-_env_path = Path(__file__).resolve().parent / ".env"
-load_dotenv(dotenv_path=_env_path, override=True)
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env", override=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,8 +25,186 @@ import catalog as catalog_module
 from models import ChatRequest, ChatResponse
 from retrieval import CatalogRetriever
 
-# ── Global state (populated at startup) ───────────────────────────────────────
 _retriever: CatalogRetriever | None = None
+
+_CHAT_UI = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SHL Assessment Advisor</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+       background:#0f172a;color:#e2e8f0;height:100vh;display:flex;flex-direction:column}
+  header{background:#1e293b;border-bottom:1px solid #334155;padding:1rem 1.5rem;
+         display:flex;align-items:center;gap:.75rem;flex-shrink:0}
+  .logo{font-size:1.4rem;font-weight:800;color:#10b981;letter-spacing:-.02em}
+  .sub{font-size:.85rem;color:#64748b}
+  #chat{flex:1;overflow-y:auto;padding:1.5rem;display:flex;flex-direction:column;gap:1rem}
+  .bwrap{display:flex;flex-direction:column;max-width:78%}
+  .bwrap.user{align-self:flex-end;align-items:flex-end}
+  .bwrap.assistant{align-self:flex-start;align-items:flex-start}
+  .bubble{padding:.75rem 1rem;border-radius:16px;line-height:1.6;font-size:.92rem;word-break:break-word}
+  .bubble.user{background:#6366f1;color:#fff;border-bottom-right-radius:4px}
+  .bubble.assistant{background:#1e293b;border:1px solid #334155;border-bottom-left-radius:4px}
+  .lbl{font-size:.72rem;color:#64748b;margin-bottom:.3rem;padding:0 .25rem}
+  .recs{margin-top:.75rem;display:flex;flex-direction:column;gap:.6rem;width:100%;max-width:520px}
+  .card{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:.85rem 1rem;
+        display:flex;flex-direction:column;gap:.35rem;transition:border-color .15s}
+  .card:hover{border-color:#6366f1}
+  .cname{font-weight:600;font-size:.9rem}
+  .crow{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+  .A{background:#1e3a5f;color:#60a5fa}
+  .B{background:#3b1f5e;color:#c084fc}
+  .P{background:#1e3a5f;color:#818cf8}
+  .K{background:#064e3b;color:#34d399}
+  .S{background:#4a1942;color:#f472b6}
+  .C{background:#3b2f00;color:#fbbf24}
+  .E{background:#1c2e1c;color:#86efac}
+  .clbl{font-size:.75rem;color:#64748b}
+  .clink{font-size:.78rem;color:#6366f1;text-decoration:none}
+  .clink:hover{text-decoration:underline}
+  form{background:#1e293b;border-top:1px solid #334155;padding:1rem 1.5rem;
+       display:flex;gap:.75rem;flex-shrink:0}
+  textarea{flex:1;background:#0f172a;border:1px solid #334155;border-radius:10px;
+           color:#e2e8f0;padding:.75rem 1rem;font-size:.92rem;resize:none;
+           font-family:inherit;line-height:1.5;max-height:120px;overflow-y:auto}
+  textarea:focus{outline:none;border-color:#6366f1}
+  textarea::placeholder{color:#475569}
+  button{background:#6366f1;color:#fff;border:none;border-radius:10px;
+         padding:.75rem 1.4rem;font-weight:600;font-size:.9rem;cursor:pointer;white-space:nowrap;align-self:flex-end}
+  button:hover{background:#4f46e5}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .typing{display:flex;gap:5px;align-items:center;padding:.6rem .75rem}
+  .dot{width:7px;height:7px;background:#64748b;border-radius:50%;animation:bounce .9s infinite}
+  .dot:nth-child(2){animation-delay:.15s}
+  .dot:nth-child(3){animation-delay:.3s}
+  @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+  .sysmsg{text-align:center;font-size:.78rem;color:#475569;padding:.25rem 0}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">SHL.</span>
+  <div>
+    <div style="font-weight:600;font-size:.95rem">Assessment Advisor</div>
+    <div class="sub">Conversational SHL Individual Test Solutions recommender</div>
+  </div>
+</header>
+<div id="chat">
+  <div class="sysmsg">Describe the role you are hiring for, or paste a job description.</div>
+</div>
+<form id="form">
+  <textarea id="inp" rows="1" placeholder="e.g. I need to hire a mid-level Java developer who works with stakeholders…"
+            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+  <button id="send" type="submit">Send</button>
+</form>
+<script>
+var TT_LABELS = {
+  A:"Ability & Aptitude", B:"Behavioural / SJT", C:"Competency",
+  E:"Exercise", K:"Knowledge & Skills", P:"Personality", S:"Simulation"
+};
+var history = [];
+var chat = document.getElementById('chat');
+var inp  = document.getElementById('inp');
+var send = document.getElementById('send');
+
+function scrollBottom(){ chat.scrollTop = chat.scrollHeight; }
+
+function mkEl(tag, cls, text){
+  var el = document.createElement(tag);
+  if(cls) el.className = cls;
+  if(text !== undefined) el.textContent = text;
+  return el;
+}
+
+function mkRecCard(r){
+  var tt = (r.test_type || '').toUpperCase().charAt(0);
+  var card = mkEl('div','card');
+  card.appendChild(mkEl('div','cname', r.name));
+  var row = mkEl('div','crow');
+  var badge = mkEl('span','badge ' + (tt || 'A'), tt || '?');
+  row.appendChild(badge);
+  row.appendChild(mkEl('span','clbl', TT_LABELS[tt] || tt));
+  card.appendChild(row);
+  var a = document.createElement('a');
+  a.className = 'clink';
+  a.href = r.url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.textContent = r.url;
+  card.appendChild(a);
+  return card;
+}
+
+function appendBubble(role, text, recs){
+  var wrap = mkEl('div','bwrap ' + role);
+  wrap.appendChild(mkEl('div','lbl', role === 'user' ? 'You' : 'SHL Advisor'));
+  wrap.appendChild(mkEl('div','bubble ' + role, text));
+  if(recs && recs.length){
+    var recsDiv = mkEl('div','recs');
+    recs.forEach(function(r){ recsDiv.appendChild(mkRecCard(r)); });
+    wrap.appendChild(recsDiv);
+  }
+  chat.appendChild(wrap);
+  scrollBottom();
+}
+
+function addTyping(){
+  var wrap = mkEl('div','bwrap assistant'); wrap.id = 'typing';
+  wrap.appendChild(mkEl('div','lbl','SHL Advisor'));
+  var bub = mkEl('div','bubble assistant typing');
+  [0,1,2].forEach(function(){ bub.appendChild(mkEl('div','dot')); });
+  wrap.appendChild(bub);
+  chat.appendChild(wrap); scrollBottom();
+}
+function removeTyping(){ var t=document.getElementById('typing'); if(t) t.remove(); }
+
+document.getElementById('form').addEventListener('submit', function(e){
+  e.preventDefault();
+  var text = inp.value.trim();
+  if(!text) return;
+  inp.value = ''; inp.style.height = 'auto';
+  send.disabled = true;
+  history.push({role:'user', content:text});
+  appendBubble('user', text, null);
+  addTyping();
+  fetch('/chat',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({messages: history})
+  }).then(function(res){
+    return res.json().then(function(data){ return {ok:res.ok, data:data}; });
+  }).then(function(r){
+    removeTyping();
+    if(!r.ok){
+      appendBubble('assistant', 'Error: ' + (r.data.detail || 'Unknown error'), null);
+    } else {
+      history.push({role:'assistant', content:r.data.reply});
+      appendBubble('assistant', r.data.reply, r.data.recommendations);
+      if(r.data.end_of_conversation){
+        var m = mkEl('div','sysmsg');
+        m.textContent = '— Conversation complete. Refresh to start a new one. —';
+        chat.appendChild(m); scrollBottom();
+        return;
+      }
+    }
+    send.disabled = false; inp.focus();
+  }).catch(function(){
+    removeTyping();
+    appendBubble('assistant','Network error. Is the server running?',null);
+    send.disabled = false;
+  });
+});
+
+inp.addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('form').requestSubmit(); }
+});
+</script>
+</body>
+</html>"""
 
 
 @asynccontextmanager
@@ -46,9 +222,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SHL Conversational Assessment Recommender",
+    title="SHL Assessment Recommender",
     version="1.0.0",
-    description="Conversational AI agent that recommends SHL Individual Test Solutions.",
+    description="Conversational agent for SHL Individual Test Solutions.",
     lifespan=lifespan,
 )
 
@@ -60,117 +236,9 @@ app.add_middleware(
 )
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
-
 @app.get("/", include_in_schema=False)
 def root():
-    return HTMLResponse(content="""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SHL Assessment Recommender</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 2rem;
-    }
-    .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 16px;
-      padding: 3rem;
-      max-width: 560px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.4);
-    }
-    .badge {
-      display: inline-block;
-      background: #10b981;
-      color: #fff;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      padding: 4px 12px;
-      border-radius: 999px;
-      margin-bottom: 1.5rem;
-    }
-    h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: .75rem; }
-    p  { color: #94a3b8; line-height: 1.7; margin-bottom: 2rem; font-size: .95rem; }
-    .buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    a.btn {
-      display: inline-block;
-      padding: .65rem 1.4rem;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: .9rem;
-      text-decoration: none;
-      transition: opacity .15s;
-    }
-    a.btn:hover { opacity: .85; }
-    .btn-primary { background: #6366f1; color: #fff; }
-    .btn-secondary { background: #334155; color: #e2e8f0; }
-    .endpoints {
-      margin-top: 2.5rem;
-      text-align: left;
-      background: #0f172a;
-      border-radius: 10px;
-      padding: 1.25rem 1.5rem;
-    }
-    .endpoints h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: .85rem; }
-    .ep { display: flex; align-items: center; gap: .75rem; margin-bottom: .55rem; font-size: .88rem; }
-    .method {
-      font-size: .72rem; font-weight: 700; padding: 2px 7px;
-      border-radius: 4px; letter-spacing: .04em; min-width: 42px; text-align: center;
-    }
-    .get  { background: #064e3b; color: #34d399; }
-    .post { background: #1e3a5f; color: #60a5fa; }
-    .ep-path { color: #cbd5e1; font-family: monospace; }
-    .ep-desc { color: #64748b; font-size: .8rem; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="badge">Live</div>
-    <h1>SHL Assessment Recommender</h1>
-    <p>A conversational AI agent that helps hiring managers find the right
-       SHL Individual Test Solutions through natural dialogue.</p>
-    <div class="buttons">
-      <a class="btn btn-primary" href="/docs">Interactive API Docs</a>
-      <a class="btn btn-secondary" href="/health">Health Check</a>
-    </div>
-    <div class="endpoints">
-      <h3>Endpoints</h3>
-      <div class="ep">
-        <span class="method get">GET</span>
-        <span class="ep-path">/health</span>
-        <span class="ep-desc">Service status</span>
-      </div>
-      <div class="ep">
-        <span class="method post">POST</span>
-        <span class="ep-path">/chat</span>
-        <span class="ep-desc">Conversational assessment advisor</span>
-      </div>
-      <div class="ep">
-        <span class="method get">GET</span>
-        <span class="ep-path">/docs</span>
-        <span class="ep-desc">Swagger UI — try the API here</span>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-""")
+    return HTMLResponse(content=_CHAT_UI)
 
 
 @app.get("/health", tags=["meta"])
@@ -181,17 +249,9 @@ def health():
 @app.post("/chat", response_model=ChatResponse, tags=["chat"])
 def chat(request: ChatRequest) -> ChatResponse:
     if _retriever is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Service is still initialising — please retry in a few seconds.",
-        )
-
+        raise HTTPException(status_code=503, detail="Service initialising — retry in a few seconds.")
     if not os.environ.get("GROQ_API_KEY") and not os.environ.get("GEMINI_API_KEY"):
-        raise HTTPException(
-            status_code=500,
-            detail="No LLM API key configured. Set GROQ_API_KEY or GEMINI_API_KEY.",
-        )
-
+        raise HTTPException(status_code=500, detail="No LLM API key configured.")
     try:
         return agent.run(request.messages, _retriever)
     except Exception as exc:

@@ -14,7 +14,7 @@ class ChatRequest(BaseModel):
 class Recommendation(BaseModel):
     name: str
     url: str
-    description: str
+    test_type: str  # SHL test-type code: A, B, C, E, K, P, S
 
 
 class ChatResponse(BaseModel):
