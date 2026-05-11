@@ -7,6 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import railway_env  # noqa: F401 — sets fallback API keys before anything else loads
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
