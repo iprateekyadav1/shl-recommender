@@ -1,117 +1,75 @@
-# SHL Conversational Assessment Recommender — Approach Document
+# Approach Document — Conversational SHL Assessment Recommender
 
-## Overview
-
-A stateless FastAPI service that converts vague hiring intent into grounded SHL
-assessment shortlists through multi-turn dialogue. Built with sentence-transformer
-semantic retrieval (FAISS), a system-prompted LLM, and deterministic post-processing
-to enforce catalog grounding and key instrument coverage.
+**Prateek Yadav | B.Tech CSE (Final Year) | GitHub: iprateekyadav1**
 
 ---
 
-## Architecture
+## What I Built and Why
 
-```
-POST /chat  ──►  FAISS retrieval (top-15)  ──►  flagship injection
-                                              ──►  LLM (Groq → Gemini → OpenRouter)
-                                              ──►  JSON parse + URL validation
-                                              ──►  OPQ32r post-processing
-                                              ──►  ChatResponse
-```
+The core problem is that hiring managers don't know SHL's vocabulary. They know they need "someone good with numbers" or "a senior Java person," not "Verify Interactive Numerical Reasoning" or "Core Java Advanced Level." So the agent's job is to bridge that gap through conversation, not keyword search.
 
-### Catalog ingestion
-
-The full SHL product catalog JSON (377 items) was fetched from the provided data URL.
-The raw JSON contained unescaped literal newlines inside string values (malformed JSON);
-a state-machine byte-level repair was applied before parsing. Each catalog item was
-enriched with:
-
-- `test_type`: mapped from SHL's `keys` field to single/multi-letter codes
-  (K = Knowledge & Skills, P = Personality, A = Ability, B = Situational Judgment,
-  C = Competencies, S = Simulations, D = Development & 360, E = Exercises)
-- `tags`: extracted from job levels, test categories, and name keyword matching
-- `job_levels`, `duration`, `languages`: preserved for context and retrieval
-
-### Retrieval
-
-`sentence-transformers/all-MiniLM-L6-v2` generates 384-dim embeddings over a composite
-field (name + tags + job_levels + description). Vectors are L2-normalised and stored in
-a `faiss.IndexFlatIP` so inner-product equals cosine similarity. At query time:
-
-1. Top-15 nearest catalog items are retrieved for the latest user message.
-2. Two flagship instruments — OPQ32r and SHL Verify Interactive G+ — are unconditionally
-   injected into the context if they didn't rank in the top 15. These items are relevant
-   to almost every professional/managerial hire but can be crowded out by role-specific
-   report products with stronger term overlap.
-
-### LLM prompting
-
-The system prompt structure:
-- Mandatory instrument guidance (OPQ32r for personality, Verify G+ for cognitive)
-- Test selection rules: prefer SHL Verify Interactive over older Verify tests; provide
-  full technical batteries for developer/engineer roles
-- Strict rules: clarify before recommending, refuse off-topic, honor turn cap
-- JSON output format with recommendations validated against the injected catalog context
-
-The LLM receives the 15–17-item catalog context (with duration, languages, job levels)
-and outputs structured JSON. Groq `llama-3.3-70b-versatile` is primary; Google Gemini
-and OpenRouter are fallbacks.
-
-### URL hallucination prevention
-
-Every LLM-returned URL is validated against the retrieved catalog items. Hallucinated
-URLs are remapped by name match, or dropped if no match exists. test_type is backfilled
-from catalog data when the LLM omits it.
-
-### OPQ32r post-processing
-
-If the LLM recommends any OPQ-branded report (OPQ Leadership Report, Enterprise
-Leadership Report, HiPo, Sales Transformation, etc.) but does not include OPQ32r,
-OPQ32r is prepended automatically. This is deterministic domain knowledge: all OPQ
-reports are generated from a single OPQ32r administration.
+I went with a retrieval-augmented approach rather than fine-tuning or hardcoding rules. The idea is simple: embed the catalog, retrieve the closest items to what the user described, give that context to an LLM, and let it reason about which ones actually fit. This keeps the agent grounded — it can only recommend things that exist in the retrieved slice.
 
 ---
 
-## Evaluation
+## Retrieval Setup
 
-**Testing against sample conversations (C1–C10):**
+I fetched the SHL catalog JSON directly from the provided URL. The raw file had a parsing problem — some product names had literal newlines inside JSON string values (e.g., "Microsoft\n    365 (New)"), which broke standard `json.loads()`. I wrote a state-machine byte-level repair that tracks whether the parser is inside a string and replaces bare `0x0A` bytes with `\n` escape sequences before parsing. That got all 377 items loaded cleanly.
 
-The 10 provided traces cover leadership selection, technical developer hiring, contact
-centre screening, graduate recruitment, safety-critical roles, and mixed bilingual
-scenarios. After reading all traces, key patterns identified:
+For embeddings I used `all-MiniLM-L6-v2` with FAISS `IndexFlatIP`. I store embeddings as L2-normalised vectors so inner product equals cosine similarity. The composite text per item is `name + tags + job_levels + description` — including job levels turned out to matter a lot for queries like "for directors" or "graduate intake."
 
-- OPQ32r appears in ~80% of final shortlists; retrieval alone was insufficient
-- The evaluator runs realistic multi-turn LLM-simulated users, not fixed scripts
-- Items recommended must use exact catalog URLs (no solutions/products URL variants)
+One retrieval problem I hit: a single embedding of a multi-technology JD ("Java, Spring, SQL, Docker, AWS") gets pulled toward the dominant term. So "Spring (New)" would rank 3rd behind two generic Java items, and "SQL (New)" would rank 12th. I fixed this with multi-query retrieval — one primary FAISS search on the full query, then a separate top-3 search for each technology keyword detected via regex, all merged and deduplicated. That brought Spring and SQL into the context reliably.
 
-**What didn't work:**
-
-- Initial catalog (32 manually curated items) missed many real catalog products
-  referenced in sample conversations (SVAR, DSI, Graduate Scenarios, etc.)
-- `var history = []` in the chat UI conflicted with `window.history` — silent JS crash
-- Groq's `llama3-70b-8192` model was decommissioned mid-development
-- top_k=10 retrieval caused OPQ32r to rank below leadership-specific report products
-
-**What improved things:**
-
-- Replacing 32-item catalog with full 377-item real SHL JSON improved Recall significantly
-- Flagship item injection (unconditional OPQ32r + Verify G+ in context) + post-processing
-- Richer composite text (+ job_levels) improved role-level retrieval
-- System prompt test selection rules reduced wrong-variant selection (Verify Interactive)
+Two flagship instruments — OPQ32r and SHL Verify Interactive G+ — appear in almost every final shortlist across the sample conversations but don't always rank in top-15 for domain-specific queries. OPQ Leadership Report outranks OPQ32r for leadership queries because "leadership" is in the report's name but not OPQ32r's description. I inject both flagships unconditionally into every context window.
 
 ---
 
-## Stack
+## Prompt Design
 
-| Component | Choice | Reason |
-|-----------|--------|--------|
-| Framework | FastAPI + Uvicorn | Async-ready, Pydantic v2 schema enforcement |
-| Embeddings | all-MiniLM-L6-v2 | Fast CPU inference, 384-dim, good semantic recall |
-| Vector store | FAISS IndexFlatIP | Zero infrastructure, exact cosine search |
-| LLM primary | Groq llama-3.3-70b-versatile | Fast inference, JSON mode, free tier |
-| LLM fallback | Gemini 1.5 Flash / OpenRouter | Rate-limit resilience |
-| Catalog source | SHL catalog JSON (provided URL) | 377 items, scraped 2026-05-08 |
+The system prompt has a few distinct sections:
 
-**AI tools used:** Claude Code (Anthropic) for implementation assistance throughout.
-All design decisions, debugging, and architectural choices were made and understood
-by the developer.
+**Instrument guidance** — I explicitly told the LLM that OPQ32r is the instrument that generates OPQ reports, so whenever it recommends an OPQ Leadership Report or HiPo Assessment, it must also include OPQ32r. Same for DSI in safety-critical roles.
+
+**Test selection rules** — After reading all 10 sample conversations I noticed the evaluator consistently prefers "SHL Verify Interactive" versions over older "Verify -" variants. I added a rule for this, and also a retrieval-side filter that removes older Verify items from context when the Interactive equivalent is present.
+
+**Technical battery instruction** — For developer/engineer roles, I told the LLM to include every technology mentioned in the query individually, not pick one representative item. This fixed cases where the agent would return "Java Frameworks (New)" and stop, missing Spring and SQL explicitly.
+
+I also added three post-processing steps that run after the LLM responds:
+- If an OPQ report is in recommendations but OPQ32r isn't → prepend OPQ32r
+- If safety-related items appear but DSI doesn't → prepend DSI  
+- Drop any URL that isn't in the retrieved catalog items (hallucination prevention)
+
+---
+
+## What Didn't Work
+
+**Initial 32-item hand-curated catalog** — I started with a manually written catalog before getting the real JSON URL. The URLs used a different path (`/solutions/products/` instead of `/products/`) and the names didn't match. Everything the evaluator checks is URL-based, so this would have failed hard evals completely.
+
+**Single top-k retrieval** — Setting `top_k=10` with a single FAISS query meant technology-specific items ranked below generic ones. Recall on multi-skill JDs was poor until multi-query retrieval was added.
+
+**Gemini JSON mode** — Adding `response_mime_type="application/json"` to the Gemini config caused 404 errors because the google-generativeai v0.7.2 SDK sends requests to an API endpoint that doesn't support that parameter. Removing it and relying on `_extract_json()` with regex fallback solved it.
+
+**Groq free tier limits** — The Groq on-demand tier has a 100k tokens/day sliding window. Heavy testing burned through it repeatedly. I added Gemini and OpenRouter as fallbacks so the deployed service degrades gracefully under load.
+
+---
+
+## Evaluation Approach
+
+I wrote a local test harness (`test_scenarios.py`) that replays single-turn and multi-turn scenarios derived from the 10 public conversation traces. Each test checks whether expected item names appear in the recommendations via substring match. After each code change I'd run a subset of tests to measure impact before running the full suite.
+
+The public traces showed a clear pattern: almost every professional/managerial hire ends with OPQ32r + Verify G+ plus role-specific tests. Knowing this, I prioritised getting those two items reliably into every context (via flagship injection) rather than just hoping FAISS would rank them correctly.
+
+---
+
+## Stack Summary
+
+| Component | Choice |
+|-----------|--------|
+| API framework | FastAPI + Uvicorn |
+| Embeddings | sentence-transformers all-MiniLM-L6-v2 |
+| Vector store | FAISS IndexFlatIP (in-process, no infra) |
+| LLM (primary) | Groq llama-3.3-70b-versatile |
+| LLM (fallbacks) | Gemini 2.0 Flash, OpenRouter |
+| Deployment | Railway (auto-deploy from GitHub) |
+
+**AI tools used:** Claude Code (Anthropic) for implementation assistance — writing boilerplate, debugging parsing errors, and iterating on prompt wording. All design decisions, retrieval architecture choices, and post-processing logic were reasoned through and understood by me.
