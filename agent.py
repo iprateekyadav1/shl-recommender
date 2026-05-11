@@ -59,8 +59,10 @@ include OPQ32r — candidates sit OPQ32r once and the reports are generated from
 https://www.shl.com/products/product-catalog/view/shl-verify-interactive-g/): \
 SHL's flagship cognitive ability test. Include it for professional, managerial, graduate, and \
 technical/senior IC roles.
-- **Dependability and Safety Instrument (DSI)** (Type P): Include for any safety-critical, \
-industrial, healthcare, or high-integrity role where dependability and compliance matter.
+- **Dependability and Safety Instrument (DSI)** (Type P, URL: \
+https://www.shl.com/products/product-catalog/view/dependability-and-safety-instrument-dsi/): \
+Include as the FIRST recommendation for any safety-critical, industrial, chemical, healthcare, \
+utilities, or frontline role where dependability, compliance, and integrity are paramount.
 
 ## Test selection rules
 - For cognitive tests: PREFER "SHL Verify Interactive" versions (newer, adaptive, type A or A,S) \
@@ -214,8 +216,36 @@ def _parse_response(raw: str, catalog_items: List[dict]) -> ChatResponse:
 
     # Post-processing: ensure OPQ32r is present when personality reports are recommended
     recommendations = _ensure_opq32r(recommendations, catalog_items)
+    # Post-processing: ensure DSI is present for safety-critical shortlists
+    recommendations = _ensure_dsi(recommendations, catalog_items)
 
     return ChatResponse(reply=reply, recommendations=recommendations, end_of_conversation=end_flag)
+
+
+# ── DSI post-processing ───────────────────────────────────────────────────────
+
+_DSI_URL = "https://www.shl.com/products/product-catalog/view/dependability-and-safety-instrument-dsi/"
+_SAFETY_REC_KEYWORDS = ("safety", "dependability", "vigilance", "workplace health")
+
+
+def _ensure_dsi(recs: List[Recommendation], catalog_items: List[dict]) -> List[Recommendation]:
+    """If safety-related items are recommended but DSI isn't, prepend DSI."""
+    if not recs:
+        return recs
+    urls = {r.url for r in recs}
+    if _DSI_URL in urls:
+        return recs
+    has_safety = any(
+        any(kw in r.name.lower() for kw in _SAFETY_REC_KEYWORDS)
+        for r in recs
+    )
+    if not has_safety:
+        return recs
+    dsi = next((item for item in catalog_items if item["url"] == _DSI_URL), None)
+    if dsi:
+        return [Recommendation(name=dsi["name"], url=dsi["url"],
+                               test_type=dsi.get("test_type", "P"))] + list(recs)
+    return recs
 
 
 # ── OPQ32r post-processing ────────────────────────────────────────────────────
@@ -271,17 +301,32 @@ def _call_groq(system_prompt: str, messages: List[Message]) -> str:
 def _call_gemini(system_prompt: str, messages: List[Message]) -> str:
     import google.generativeai as genai
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=system_prompt,
-    )
-    history = [
-        {"role": "user" if m.role == "user" else "model", "parts": [m.content]}
-        for m in messages[:-1]
-    ]
-    chat = model.start_chat(history=history)
-    response = chat.send_message(messages[-1].content if messages else "")
-    return response.text
+    # Try models in order; gemini-2.0-flash supports JSON mode natively
+    for model_name in ("models/gemini-2.5-flash", "models/gemini-2.0-flash", "models/gemini-flash-latest"):
+        try:
+            cfg_kwargs: dict = {"temperature": 0.2, "max_output_tokens": 1024}
+            try:
+                cfg_kwargs["response_mime_type"] = "application/json"
+                cfg = genai.GenerationConfig(**cfg_kwargs)
+            except Exception:
+                del cfg_kwargs["response_mime_type"]
+                cfg = genai.GenerationConfig(**cfg_kwargs)
+
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=system_prompt,
+                generation_config=cfg,
+            )
+            history = [
+                {"role": "user" if m.role == "user" else "model", "parts": [m.content]}
+                for m in messages[:-1]
+            ]
+            chat = model.start_chat(history=history)
+            response = chat.send_message(messages[-1].content if messages else "")
+            return response.text
+        except Exception as exc:
+            logger.warning("Gemini model %s failed: %s — trying next…", model_name, exc)
+    raise RuntimeError("All Gemini models failed.")
 
 
 def _call_openrouter(system_prompt: str, messages: List[Message]) -> str:
@@ -334,19 +379,91 @@ def _call_llm(system_prompt: str, messages: List[Message]) -> str:
 _FLAGSHIP_NAMES = [
     "Occupational Personality Questionnaire OPQ32r",
     "SHL Verify Interactive G+",
+    "Dependability and Safety Instrument (DSI)",
 ]
 
 
 def _inject_flagship_items(
     catalog_items: List[dict], retriever: CatalogRetriever
 ) -> List[dict]:
-    """Ensure the two flagship instruments are always present in retrieved context."""
+    """Ensure the three flagship instruments are always present in retrieved context."""
     present = {item["name"] for item in catalog_items}
     name_map = {item["name"]: item for item in retriever._catalog}
     for name in _FLAGSHIP_NAMES:
         if name not in present and name in name_map:
             catalog_items = catalog_items + [name_map[name]]
     return catalog_items
+
+
+# ── Multi-query retrieval ─────────────────────────────────────────────────────
+
+# Technology keywords that each warrant a dedicated FAISS lookup so that
+# "Spring (New)" is found when the user says "Spring", etc.
+_TECH_KEYWORDS = re.compile(
+    r"\b(java|python|sql|javascript|typescript|c\+\+|c#|\.net|ruby|php|scala|"
+    r"go|golang|rust|swift|kotlin|angular|react|vue|node\.?js|spring|django|"
+    r"flask|fastapi|aws|azure|gcp|docker|kubernetes|terraform|linux|git|"
+    r"devops|agile|scrum|excel|word|powerpoint|sharepoint|salesforce|sap|"
+    r"tableau|power\s*bi|hadoop|spark|tensorflow|pytorch|hipaa|networking|"
+    r"restful|rest\s*api|microservices)\b",
+    re.IGNORECASE,
+)
+
+
+def _multi_query_retrieve(query: str, retriever: CatalogRetriever) -> List[dict]:
+    """Primary FAISS search + per-technology follow-up searches merged and deduped."""
+    seen_urls: set = set()
+    results: List[dict] = []
+
+    def _add(items: List[dict]) -> None:
+        for item in items:
+            if item["url"] not in seen_urls:
+                seen_urls.add(item["url"])
+                results.append(item)
+
+    # Primary search on full query
+    _add(retriever.search(query, top_k=12))
+
+    # Per-technology follow-up (top-3 each, deduplicated)
+    for m in _TECH_KEYWORDS.finditer(query):
+        tech = m.group(0)
+        _add(retriever.search(tech, top_k=3))
+
+    items = results[:20]
+
+    # Prefer "SHL Verify Interactive" over older "Verify - " variants
+    items = _prefer_interactive_verify(items)
+
+    return items
+
+
+def _prefer_interactive_verify(items: List[dict]) -> List[dict]:
+    """Remove older 'Verify - X' items when newer 'SHL Verify Interactive – X' is present."""
+    # Build set of Interactive Verify subtypes present
+    interactive = set()
+    for item in items:
+        n = item["name"]
+        if "SHL Verify Interactive" in n:
+            # Extract the subtest name: "Numerical Reasoning", "Deductive Reasoning" etc.
+            suffix = n.replace("SHL Verify Interactive", "").replace("–", "").strip().lower()
+            if suffix and suffix != "g+":
+                interactive.add(suffix)
+            if "g+" in n.lower():
+                interactive.add("g+")
+
+    if not interactive:
+        return items
+
+    filtered = []
+    for item in items:
+        n = item["name"]
+        # Drop old-style "Verify - X" items when Interactive version exists
+        if n.startswith("Verify - "):
+            subtype = n.replace("Verify - ", "").strip().lower()
+            if any(subtype in iv or iv in subtype for iv in interactive):
+                continue  # skip — superseded by Interactive version
+        filtered.append(item)
+    return filtered
 
 
 # ── Public interface ──────────────────────────────────────────────────────────
@@ -370,7 +487,7 @@ def run(messages: List[Message], retriever: CatalogRetriever) -> ChatResponse:
         )
 
     query = _last_user_message(messages)
-    catalog_items = retriever.search(query, top_k=15)
+    catalog_items = _multi_query_retrieve(query, retriever)
 
     if not catalog_items:
         return ChatResponse(
