@@ -98,9 +98,11 @@ the user explicitly signals they are satisfied or done \
 (e.g. "thanks", "that's all", "looks good", "perfect"). \
 Do NOT set it to true merely because you gave recommendations.
 
-## Output format — strict JSON, no markdown fences, no prose outside the JSON
+## Output format
+Output ONLY the raw JSON object below. No markdown. No prose. No wrapping. \
+The very first character of your response must be {{ and the very last must be }}.
 {{
-  "reply": "<conversational response>",
+  "reply": "<conversational response — plain text, never JSON>",
   "recommendations": [
     {{
       "name": "<exact name from catalog above>",
@@ -193,6 +195,18 @@ def _parse_response(raw: str, catalog_items: List[dict]) -> ChatResponse:
 
     reply = str(data.get("reply", "")).strip() or raw[:500]
     end_flag = bool(data.get("end_of_conversation", False))
+
+    # Gemini sometimes stuffs the entire JSON blob inside the reply field.
+    # Detect and unwrap that one level of double-encoding.
+    if reply.lstrip().startswith("{"):
+        try:
+            inner = json.loads(reply)
+            if isinstance(inner, dict) and "reply" in inner:
+                data = inner
+                reply = str(data.get("reply", "")).strip()
+                end_flag = bool(data.get("end_of_conversation", end_flag))
+        except json.JSONDecodeError:
+            pass
 
     # Build fast lookup structures from retrieved catalog items
     url_to_item = {item["url"]: item for item in catalog_items}
