@@ -197,8 +197,9 @@ def _parse_response(raw: str, catalog_items: List[dict]) -> ChatResponse:
     end_flag = bool(data.get("end_of_conversation", False))
 
     # Gemini sometimes stuffs the entire JSON blob inside the reply field.
-    # Detect and unwrap that one level of double-encoding.
+    # Handle both complete and truncated inner JSON.
     if reply.lstrip().startswith("{"):
+        # Try full re-parse first
         try:
             inner = json.loads(reply)
             if isinstance(inner, dict) and "reply" in inner:
@@ -206,7 +207,10 @@ def _parse_response(raw: str, catalog_items: List[dict]) -> ChatResponse:
                 reply = str(data.get("reply", "")).strip()
                 end_flag = bool(data.get("end_of_conversation", end_flag))
         except json.JSONDecodeError:
-            pass
+            # Inner JSON is truncated — extract reply value via regex
+            m = re.search(r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)["\\]?', reply)
+            if m:
+                reply = m.group(1).replace('\\"', '"').replace("\\n", "\n").strip()
 
     # Build fast lookup structures from retrieved catalog items
     url_to_item = {item["url"]: item for item in catalog_items}
