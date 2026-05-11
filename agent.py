@@ -83,15 +83,20 @@ inputs like "I need an assessment" or "help me".
 3. JD PARSING: If the user pastes a job description, extract role, seniority, \
 key skills, and competencies from it automatically — no need to ask again.
 4. RECOMMEND: Once you have role + seniority + at least one skill/competency, \
-return 1–10 assessments from the catalog above. Never invent names or URLs.
-5. REFINE: If the user adds/removes constraints mid-conversation, update the \
-shortlist without restarting. Keep prior context.
+return up to 10 assessments from the catalog above. Aim for 10 where possible — \
+breadth improves coverage. Never invent names or URLs.
+5. REFINE: If the user adds, removes, or changes constraints mid-conversation \
+(e.g. "remove Python", "they are senior not mid-level", "add leadership"), \
+revise the shortlist immediately to reflect those edits. Always honour the \
+user's latest stated preferences.
 6. COMPARE: If asked to compare assessments, answer using only catalog data \
 provided above. Never hallucinate features.
 7. TURN LIMIT: Max {turns_remaining} turns remain. If ≤2 turns are left and \
 you have ANY context, commit to a recommendation now.
 8. end_of_conversation: set to true ONLY after a shortlist has been given AND \
-the user signals they are done (e.g. "thanks", "that's all", "looks good").
+the user explicitly signals they are satisfied or done \
+(e.g. "thanks", "that's all", "looks good", "perfect"). \
+Do NOT set it to true merely because you gave recommendations.
 
 ## Output format — strict JSON, no markdown fences, no prose outside the JSON
 {{
@@ -144,6 +149,13 @@ def _last_user_message(messages: List[Message]) -> str:
         if msg.role == "user":
             return msg.content
     return ""
+
+
+def _build_retrieval_query(messages: List[Message]) -> str:
+    """Concatenate the last 3 user messages so multi-turn context is preserved in FAISS."""
+    user_msgs = [m.content for m in messages if m.role == "user"]
+    # Take last 3 user messages; join with space so keywords from earlier turns survive
+    return " ".join(user_msgs[-3:])
 
 
 # ── JSON extraction ───────────────────────────────────────────────────────────
@@ -218,6 +230,9 @@ def _parse_response(raw: str, catalog_items: List[dict]) -> ChatResponse:
     recommendations = _ensure_opq32r(recommendations, catalog_items)
     # Post-processing: ensure DSI is present for safety-critical shortlists
     recommendations = _ensure_dsi(recommendations, catalog_items)
+
+    # Hard cap: evaluator Recall@10 means 10 slots; never exceed
+    recommendations = recommendations[:10]
 
     return ChatResponse(reply=reply, recommendations=recommendations, end_of_conversation=end_flag)
 
@@ -477,8 +492,9 @@ def run(messages: List[Message], retriever: CatalogRetriever) -> ChatResponse:
             end_of_conversation=False,
         )
 
-    turn_count = len(messages)
-    if turn_count > MAX_TURNS:
+    # Count only user turns — len(messages) includes assistant replies and grows as 2N-1
+    user_turn_count = sum(1 for m in messages if m.role == "user")
+    if user_turn_count > MAX_TURNS:
         return ChatResponse(
             reply="We've reached the maximum conversation length. Please review the recommendations above, "
                   "or start a new conversation for further help.",
@@ -486,7 +502,8 @@ def run(messages: List[Message], retriever: CatalogRetriever) -> ChatResponse:
             end_of_conversation=True,
         )
 
-    query = _last_user_message(messages)
+    # Use last 3 user messages concatenated so earlier context (role, tech stack) survives
+    query = _build_retrieval_query(messages)
     catalog_items = _multi_query_retrieve(query, retriever)
 
     if not catalog_items:
@@ -503,7 +520,7 @@ def run(messages: List[Message], retriever: CatalogRetriever) -> ChatResponse:
 
     system_prompt = _SYSTEM_TEMPLATE.format(
         catalog_context=_build_catalog_context(catalog_items),
-        turns_remaining=MAX_TURNS - turn_count,
+        turns_remaining=MAX_TURNS - user_turn_count,
     )
 
     raw = _call_llm(system_prompt, messages)
